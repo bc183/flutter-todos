@@ -31,6 +31,7 @@ class _RegisterViewState extends State<RegisterView> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Register"),
+        backgroundColor: Colors.red,
       ),
       body: FutureBuilder(builder: (context, snapshot) {
         return Column(
@@ -59,6 +60,13 @@ class _RegisterViewState extends State<RegisterView> {
                 print("${email}, ${password}");
               },
               child: const Text("Register"),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context)
+                    .pushNamedAndRemoveUntil("/login/", (route) => false);
+              },
+              child: const Text("Already have an account ? Login Here!"),
             ),
           ],
         );

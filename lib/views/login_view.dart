@@ -30,6 +30,7 @@ class _LoginViewState extends State<LoginView> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Login"),
+        backgroundColor: Colors.red,
       ),
       body: FutureBuilder(builder: (context, snapshot) {
         return Column(
@@ -58,6 +59,13 @@ class _LoginViewState extends State<LoginView> {
                 print("${email}, ${password}");
               },
               child: const Text("Login"),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context)
+                    .pushNamedAndRemoveUntil("/register/", (route) => false);
+              },
+              child: const Text("Don't have an account ? Register Here!"),
             ),
           ],
         );
