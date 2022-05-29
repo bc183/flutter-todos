@@ -25,6 +25,11 @@ class _LoginViewState extends State<LoginView> {
     super.dispose();
   }
 
+  void onLogin(context) {
+    Navigator.of(context)
+        .pushNamedAndRemoveUntil("/my-notes/", (route) => false);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -57,6 +62,7 @@ class _LoginViewState extends State<LoginView> {
                 final String password = _password.text;
 
                 print("${email}, ${password}");
+                onLogin(context);
               },
               child: const Text("Login"),
             ),
