@@ -1,8 +1,13 @@
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:todos/constants/routes.dart';
 import 'package:todos/views/login_view.dart';
-import 'package:todos/views/notes__view.dart';
+import 'package:todos/views/notes_view.dart';
 import 'package:todos/views/register_view.dart';
 import 'package:todos/views/verify_email_view.dart';
+
+import 'firebase_options.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -13,9 +18,10 @@ void main() {
     ),
     home: const HomePage(),
     routes: {
-      "/login/": (context) => const LoginView(),
-      "/register/": (context) => const RegisterView(),
-      "/my-notes/": (context) => const NotesView()
+      loginRoute: (context) => const LoginView(),
+      registerRoute: (context) => const RegisterView(),
+      notesRoute: (context) => const NotesView(),
+      verifyEmailRoute: (context) => const VerifyEmailView(),
     },
   ));
 }
@@ -23,50 +29,30 @@ void main() {
 class HomePage extends StatelessWidget {
   const HomePage({Key? key}) : super(key: key);
 
-  void goToLogin(BuildContext context) {
-    Navigator.of(context)
-        .push(MaterialPageRoute(builder: (context) => const LoginView()));
-  }
-
-  void goToRegister(BuildContext context) {
-    Navigator.of(context)
-        .push(MaterialPageRoute(builder: (context) => const RegisterView()));
-  }
-
-  void goToVerifyEmail(BuildContext context) {
-    Navigator.of(context)
-        .push(MaterialPageRoute(builder: (context) => const VerifyEmailView()));
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Todos"),
-        centerTitle: true,
-        backgroundColor: Colors.red,
+    return FutureBuilder(
+      future: Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
       ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          TextButton(
-              onPressed: () {
-                goToLogin(context);
-              },
-              child: const Text("Go to Login")),
-          TextButton(
-              onPressed: () {
-                goToRegister(context);
-              },
-              child: const Text("Go to Register")),
-          TextButton(
-              onPressed: () {
-                goToVerifyEmail(context);
-              },
-              child: const Text("Go to Verify Email View")),
-        ],
-      ),
+      builder: (context, snapshot) {
+        switch (snapshot.connectionState) {
+          case ConnectionState.done:
+            final user = FirebaseAuth.instance.currentUser;
+            if (user != null) {
+              if (user.emailVerified) {
+                print('Email is verified');
+              } else {
+                return const VerifyEmailView();
+              }
+            } else {
+              return const LoginView();
+            }
+            return const Text('Done');
+          default:
+            return const CircularProgressIndicator();
+        }
+      },
     );
   }
 }
