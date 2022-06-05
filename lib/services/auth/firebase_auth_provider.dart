@@ -1,4 +1,8 @@
-import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:developer';
+
+import 'package:firebase_auth/firebase_auth.dart' show FirebaseAuth, FirebaseAuthException;
+import 'package:firebase_core/firebase_core.dart';
+import 'package:todos/firebase_options.dart';
 import 'package:todos/services/auth/auth_exceptions.dart';
 import 'package:todos/services/auth/auth_provider.dart';
 import 'package:todos/services/auth/auth_user.dart';
@@ -97,5 +101,12 @@ class FirebaseAuthProvider implements AuthProvider {
     } catch (e) {
       throw GenericAuthException();
     }
+  }
+  
+  @override
+  Future<void> initialize() async {
+    Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
   }
 }
