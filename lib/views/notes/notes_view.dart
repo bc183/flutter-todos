@@ -4,7 +4,7 @@ import 'package:todos/constants/routes.dart';
 import 'package:todos/services/auth/auth_service.dart';
 import 'package:todos/services/auth/crud/notes_service.dart';
 
-import '../enums/menu_action.dart';
+import '../../enums/menu_action.dart';
 
 class NotesView extends StatefulWidget {
   const NotesView({Key? key}) : super(key: key);
@@ -35,6 +35,12 @@ class _NotesViewState extends State<NotesView> {
       appBar: AppBar(
         title: const Text('My Notes'),
         actions: [
+          IconButton(
+            onPressed: () {
+              Navigator.of(context).pushNamed(newNoteRoute);
+            },
+            icon: const Icon(Icons.add),
+          ),
           PopupMenuButton<MenuAction>(
             onSelected: (value) async {
               switch (value) {
@@ -82,6 +88,14 @@ class _NotesViewState extends State<NotesView> {
                             decoration:
                                 const BoxDecoration(color: Colors.white38),
                             child: const Text('Waiting for notes'));
+                      case ConnectionState.active:
+                        return Container(
+                            width: double.maxFinite,
+                            height: double.maxFinite,
+                            padding: const EdgeInsets.only(left: 20, right: 20),
+                            decoration:
+                                const BoxDecoration(color: Colors.white38),
+                            child: const Text('Notes are fetched.'));
                       default:
                         return const CircularProgressIndicator();
                     }
