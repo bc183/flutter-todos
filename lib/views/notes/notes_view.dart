@@ -1,10 +1,10 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:todos/constants/routes.dart';
+import 'package:todos/enums/menu_action.dart';
 import 'package:todos/services/auth/auth_service.dart';
-import 'package:todos/services/auth/crud/notes_service.dart';
-
-import '../../enums/menu_action.dart';
+import 'package:todos/services/crud/notes_service.dart';
+import 'package:todos/utils/dialogs/logout_dialog.dart';
+import 'package:todos/views/notes/notes_list_view.dart';
 
 class NotesView extends StatefulWidget {
   const NotesView({Key? key}) : super(key: key);
@@ -14,8 +14,8 @@ class NotesView extends StatefulWidget {
 }
 
 class _NotesViewState extends State<NotesView> {
-  String get userEmail => AuthService.firebase().currentUser!.email!;
   late final NotesService _notesService;
+  String get userEmail => AuthService.firebase().currentUser!.email!;
 
   @override
   void initState() {
@@ -24,16 +24,10 @@ class _NotesViewState extends State<NotesView> {
   }
 
   @override
-  void dispose() {
-    _notesService.close();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Notes'),
+        title: const Text('Your Notes'),
         actions: [
           IconButton(
             onPressed: () {
@@ -45,11 +39,9 @@ class _NotesViewState extends State<NotesView> {
             onSelected: (value) async {
               switch (value) {
                 case MenuAction.logout:
-                  final shouldLogout = await showLogOutDialog(context);
+                  final shouldLogout = await showLogoutDialog(context);
                   if (shouldLogout) {
-                    await FirebaseAuth.instance.signOut();
-
-                    await Future.delayed(const Duration(seconds: 2));
+                    await AuthService.firebase().logout();
 
                     if (mounted) {
                       Navigator.of(context).pushNamedAndRemoveUntil(
@@ -76,30 +68,33 @@ class _NotesViewState extends State<NotesView> {
         builder: (context, snapshot) {
           switch (snapshot.connectionState) {
             case ConnectionState.done:
-              return StreamBuilder<Object>(
-                  stream: _notesService.allNotes,
-                  builder: (context, snapshot) {
-                    switch (snapshot.connectionState) {
-                      case ConnectionState.waiting:
-                        return Container(
-                            width: double.maxFinite,
-                            height: double.maxFinite,
-                            padding: const EdgeInsets.only(left: 20, right: 20),
-                            decoration:
-                                const BoxDecoration(color: Colors.white38),
-                            child: const Text('Waiting for notes'));
-                      case ConnectionState.active:
-                        return Container(
-                            width: double.maxFinite,
-                            height: double.maxFinite,
-                            padding: const EdgeInsets.only(left: 20, right: 20),
-                            decoration:
-                                const BoxDecoration(color: Colors.white38),
-                            child: const Text('Notes are fetched.'));
-                      default:
+              return StreamBuilder(
+                stream: _notesService.allNotes,
+                builder: (context, snapshot) {
+                  switch (snapshot.connectionState) {
+                    case ConnectionState.waiting:
+                    case ConnectionState.active:
+                      if (snapshot.hasData) {
+                        final allNotes = snapshot.data as List<DatabaseNote>;
+                        if (allNotes.isEmpty) {
+                          return const Center(
+                            child: Text("No Notes Available"),
+                          );
+                        }
+                        return NotestListView(
+                          notes: allNotes,
+                          onDeleteNote: (note) async {
+                            await _notesService.deleteNote(id: note.id);
+                          },
+                        );
+                      } else {
                         return const CircularProgressIndicator();
-                    }
-                  });
+                      }
+                    default:
+                      return const CircularProgressIndicator();
+                  }
+                },
+              );
             default:
               return const CircularProgressIndicator();
           }
@@ -107,30 +102,4 @@ class _NotesViewState extends State<NotesView> {
       ),
     );
   }
-}
-
-Future<bool> showLogOutDialog(BuildContext context) {
-  return showDialog<bool>(
-    context: context,
-    builder: (context) {
-      return AlertDialog(
-        title: const Text('Sign out'),
-        content: const Text('Are you sure you want to sign out?'),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop(false);
-            },
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop(true);
-            },
-            child: const Text('Log out'),
-          ),
-        ],
-      );
-    },
-  ).then((value) => value ?? false);
 }
