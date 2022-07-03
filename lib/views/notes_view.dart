@@ -1,6 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:todos/constants/routes.dart';
+import 'package:todos/services/auth/auth_service.dart';
+import 'package:todos/services/auth/crud/notes_service.dart';
 
 import '../enums/menu_action.dart';
 
@@ -12,11 +14,26 @@ class NotesView extends StatefulWidget {
 }
 
 class _NotesViewState extends State<NotesView> {
+  String get userEmail => AuthService.firebase().currentUser!.email!;
+  late final NotesService _notesService;
+
+  @override
+  void initState() {
+    _notesService = NotesService();
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    _notesService.close();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Main UI'),
+        title: const Text('My Notes'),
         actions: [
           PopupMenuButton<MenuAction>(
             onSelected: (value) async {
@@ -48,7 +65,32 @@ class _NotesViewState extends State<NotesView> {
           )
         ],
       ),
-      body: const Text('Hello world'),
+      body: FutureBuilder(
+        future: _notesService.getOrCreateUser(email: userEmail),
+        builder: (context, snapshot) {
+          switch (snapshot.connectionState) {
+            case ConnectionState.done:
+              return StreamBuilder<Object>(
+                  stream: _notesService.allNotes,
+                  builder: (context, snapshot) {
+                    switch (snapshot.connectionState) {
+                      case ConnectionState.waiting:
+                        return Container(
+                            width: double.maxFinite,
+                            height: double.maxFinite,
+                            padding: const EdgeInsets.only(left: 20, right: 20),
+                            decoration:
+                                const BoxDecoration(color: Colors.white38),
+                            child: const Text('Waiting for notes'));
+                      default:
+                        return const CircularProgressIndicator();
+                    }
+                  });
+            default:
+              return const CircularProgressIndicator();
+          }
+        },
+      ),
     );
   }
 }
