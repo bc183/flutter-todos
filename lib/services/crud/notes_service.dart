@@ -5,7 +5,6 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' show join;
 
-import 'package:todos/extensions/list/filter.dart';
 import 'crud_exceptions.dart';
 
 class NotesService {
