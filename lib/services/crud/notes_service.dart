@@ -5,33 +5,50 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' show join;
 
+import 'package:todos/extensions/list/filter.dart';
 import 'crud_exceptions.dart';
 
 class NotesService {
   Database? _db;
+  DatabaseUser? _dbUser;
 
   List<DatabaseNote> _notes = [];
 
   static final NotesService _shared = NotesService._sharedInstance();
   NotesService._sharedInstance() {
     _notesStreamController = StreamController<List<DatabaseNote>>.broadcast(
-      onListen: () {
+      onListen: () async {
+        await _cacheNotes();
         _notesStreamController.sink.add(_notes);
       },
     );
   }
+
   factory NotesService() => _shared;
 
   late final StreamController<List<DatabaseNote>> _notesStreamController;
+
+  // Stream<List<DatabaseNote>> get allNotes =>
+  //     _notesStreamController.stream.filter((note) {
+  //       final currentUser = _dbUser;
+
+  //       if (currentUser == null) {
+  //         throw UserShouldBeSetBeforeGettingAllNotes();
+  //       }
+
+  //       return note.userId == currentUser.id;
+  //     });
 
   Stream<List<DatabaseNote>> get allNotes => _notesStreamController.stream;
 
   Future<DatabaseUser> getOrCreateUser({required String email}) async {
     try {
       final user = await getUser(email: email);
+
       return user;
     } on CouldNotFindUser {
       final createdUser = await createUser(email: email);
+
       return createdUser;
     } catch (e) {
       rethrow;
@@ -39,7 +56,7 @@ class NotesService {
   }
 
   Future<void> _cacheNotes() async {
-    final allNotes = await getAllNotes();
+    final allNotes = await getAllNotesForTheCurrentUser();
     _notes = allNotes.toList();
     _notesStreamController.add(_notes);
   }
@@ -79,6 +96,18 @@ class NotesService {
     await _ensureDbIsOpen();
     final db = _getDatabaseOrThrow();
     final notes = await db.query(noteTable);
+    return notes.map((noteRow) => DatabaseNote.fromRow(noteRow));
+  }
+
+  Future<Iterable<DatabaseNote>> getAllNotesForTheCurrentUser() async {
+    await _ensureDbIsOpen();
+    final db = _getDatabaseOrThrow();
+
+    final notes = await db.query(
+      noteTable,
+      where: 'user_id = ?',
+      whereArgs: [_dbUser?.id],
+    );
     return notes.map((noteRow) => DatabaseNote.fromRow(noteRow));
   }
 
@@ -173,7 +202,9 @@ class NotesService {
     if (results.isEmpty) {
       throw CouldNotFindUser();
     } else {
-      return DatabaseUser.fromRow(results.first);
+      final user = DatabaseUser.fromRow(results.first);
+      _dbUser = user;
+      return user;
     }
   }
 
@@ -194,10 +225,13 @@ class NotesService {
       emailColumn: email.toLowerCase(),
     });
 
-    return DatabaseUser(
+    final user = DatabaseUser(
       id: userId,
       email: email,
     );
+    _dbUser = user;
+
+    return user;
   }
 
   Future<void> deleteUser({required String email}) async {
@@ -253,7 +287,6 @@ class NotesService {
       await db.execute(createUserTable);
       // create note table
       await db.execute(createNoteTable);
-      await _cacheNotes();
     } on MissingPlatformDirectoryException {
       throw UnableToGetDocumentsDirectory();
     }
