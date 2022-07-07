@@ -104,13 +104,8 @@ class FirebaseAuthProvider implements AuthProvider {
 
   @override
   Future<void> initialize() async {
-    print("hi");
-    try {
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
-    } catch (e) {
-      print(e);
-    }
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
   }
 }
