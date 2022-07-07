@@ -1,7 +1,10 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:todos/constants/routes.dart';
 import 'package:todos/enums/menu_action.dart';
 import 'package:todos/services/auth/auth_service.dart';
+import 'package:todos/services/cloud/cloud_note.dart';
+import 'package:todos/services/cloud/firebase_cloud_storage.dart';
 import 'package:todos/services/crud/notes_service.dart';
 import 'package:todos/utils/dialogs/logout_dialog.dart';
 import 'package:todos/views/notes/notes_list_view.dart';
@@ -14,12 +17,12 @@ class NotesView extends StatefulWidget {
 }
 
 class _NotesViewState extends State<NotesView> {
-  late final NotesService _notesService;
-  String get userEmail => AuthService.firebase().currentUser!.email;
+  late final FirebaseCloudStorage _firebaseCloudStorage;
+  String get userId => AuthService.firebase().currentUser!.id;
 
   @override
   void initState() {
-    _notesService = NotesService();
+    _firebaseCloudStorage = FirebaseCloudStorage();
     super.initState();
   }
 
@@ -63,44 +66,35 @@ class _NotesViewState extends State<NotesView> {
           )
         ],
       ),
-      body: FutureBuilder(
-        future: _notesService.getOrCreateUser(email: userEmail),
+      body: StreamBuilder(
+        stream: _firebaseCloudStorage.allNotes(ownerUserId: userId),
         builder: (context, snapshot) {
           switch (snapshot.connectionState) {
-            case ConnectionState.done:
-              return StreamBuilder(
-                stream: _notesService.allNotes,
-                builder: (context, snapshot) {
-                  switch (snapshot.connectionState) {
-                    case ConnectionState.waiting:
-                    case ConnectionState.active:
-                      if (snapshot.hasData) {
-                        final allNotes = snapshot.data as List<DatabaseNote>;
-                        if (allNotes.isEmpty) {
-                          return const Center(
-                            child: Text("No Notes Available"),
-                          );
-                        }
-                        return NotestListView(
-                          notes: allNotes,
-                          onDeleteNote: (note) async {
-                            await _notesService.deleteNote(id: note.id);
-                          },
-                          onTap: (note) {
-                            Navigator.of(context).pushNamed(
-                              createOrUpdateNoteRoute,
-                              arguments: note,
-                            );
-                          },
-                        );
-                      } else {
-                        return const CircularProgressIndicator();
-                      }
-                    default:
-                      return const CircularProgressIndicator();
-                  }
-                },
-              );
+            case ConnectionState.waiting:
+            case ConnectionState.active:
+              if (snapshot.hasData) {
+                final allNotes = snapshot.data as Iterable<CloudNote>;
+                if (allNotes.isEmpty) {
+                  return const Center(
+                    child: Text("No Notes Available"),
+                  );
+                }
+                return NotestListView(
+                  notes: allNotes,
+                  onDeleteNote: (note) async {
+                    await _firebaseCloudStorage.deleteNote(
+                        noteId: note.documentId);
+                  },
+                  onTap: (note) {
+                    Navigator.of(context).pushNamed(
+                      createOrUpdateNoteRoute,
+                      arguments: note,
+                    );
+                  },
+                );
+              } else {
+                return const CircularProgressIndicator();
+              }
             default:
               return const CircularProgressIndicator();
           }
